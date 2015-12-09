@@ -32,10 +32,28 @@ NEW_ROUTER.prototype.handleRoutes= function(connection,auth) {
       }
     });
   });
-  
-  router.post("/add",function(req,res){
-    var datetime = new Date();
-    var date = datetime.getFullYear()+"-"+datetime.getMonth()+"-"+datetime.getDate();
+
+  router.get("/checkemail/:email",function(req,res){
+    var query = "SELECT * FROM ?? where email = ? ";
+    var table = ["users", req.params.email];
+    query = mysql.format(query,table);
+    console.log(query);
+    connection.query(query, function(err,results){
+      if(err){
+        res.json({"Error": true});
+      }else{
+
+        if (!isEmptyObject(results)) {
+
+          res.json({"Error": true});
+        } else {
+          res.json({"Error": false}) 
+        }
+      }
+    });
+  });
+  // register new member
+  router.post("/addmember",function(req,res){
 
   //  console.log(pass);
   bcrypt.genSalt(5, function(err, salt) {
@@ -45,9 +63,9 @@ NEW_ROUTER.prototype.handleRoutes= function(connection,auth) {
       if (err) return err;
 
 
-      var query = "INSERT INTO ??(email,password,credentials,updated_at,created_at,first_name, last_name) VALUES (?, ? ,?,'"+ date +"','"+ date +"', ?,?)";
-      var table = ["users", req.body.email, hash, req.body.credentials, req.body.first_name, req.body.last_name];
-      console.log('4xx');
+      var query = "INSERT INTO ??(email,password,credentials,updated_at,created_at,first_name, last_name) VALUES (?, ? ,?,NOW(),NOW(), ?,?)";
+      var table = ["users", req.body.email, hash, 'member', req.body.first_name, req.body.last_name];
+
       query = mysql.format(query,table);
       console.log(query);
       connection.query(query, function(err,results){
@@ -57,20 +75,50 @@ NEW_ROUTER.prototype.handleRoutes= function(connection,auth) {
 
           if (!isEmptyObject(results)) {
 
-            res.json({"Error": false, "Message" : "Login Success", "Users" : results});
+            res.json({"Error": false, "Message" : "Sign Up Success"});
           } else {
-            res.json({"Error": false, "Message" : "User Not Found / Incorrect Password !", "Users" : ""}) 
+            res.json({"Error": true, "Message" : "Failed! Retry again"}) 
           }
 
         }
       }); 
 
-
     });
   });
 
-
 });
+  //login user
+  router.post("/login",function(req,res){
+    var query = "SELECT * FROM ?? where email = ?";
+    var table = ["users", req.body.email];
+    query = mysql.format(query,table);
+    console.log(query);
+    connection.query(query, function(err,user){
+      if(err){
+        res.json({"Error": true});
+      }else{
+
+        if (!isEmptyObject(user)) {
+          //if email user found
+          bcrypt.compare(req.body.password, user[0]['password'], function(err, isMatch) {
+            if (err) {return err;}
+            else{
+              if(isMatch)
+              {
+                res.json({"Error": false}) 
+              }else{
+                res.json({"Error": true})
+              }
+            }     
+
+          });
+        } else {
+          res.json({"Error": true}) 
+        }
+      }
+    });
+  });
+
 router.get("/registerWatchList/:user_id/:movie_id",function(req, res){
 
   var datetime = new Date();

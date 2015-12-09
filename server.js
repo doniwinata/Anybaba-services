@@ -4,6 +4,8 @@ var bodyParser  = require("body-parser");
 var userController= require("./controller/users.js");
 var authController= require("./controller/auth.js");
 var app  = express();
+var jwt = require("jsonwebtoken");
+var config = require("./config.js");
 
 function REST(){
   var self = this;
@@ -35,8 +37,52 @@ REST.prototype.configureExpress = function(connection) {
   app.use(bodyParser.json());
   //register controller
   var auth = new authController(connection);
+  router = express.Router();
+  router.use(function(req, res, next) {
+
+  // check header or url parameters or post parameters for token
+  var token = req.body.token || req.query.token || req.headers['x-access-token'];
+
+  // decode token
+  if (token) {
+
+    // verifies secret and checks exp
+
+    jwt.verify(token, config.secret, function(err, decoded) {      
+      if (err) {
+
+        return res.json({ success: false, message: 'Failed to authenticate token.' });    
+      } else {
+
+       //check if it is our client
+       
+       if(decoded.client_id == config.client_id && decoded.client_secret == config.client_secret)
+       {
+         next();
+       }
+       else {
+        return res.status(403).send({ 
+          success: false, 
+          message: 'You are not Allowed for this request!' 
+        });
+      }   
+    }
+  });
+
+  } else {
+
+    // if there is no token
+    // return an error
+    return res.status(403).send({ 
+      success: false, 
+      message: 'No token provided.' 
+    });
+    
+  }
+});
+  app.use('/*',router);
   app.use('/backend/users', new userController(connection,auth));
-  
+
 
 
   self.startServer();
