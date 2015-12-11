@@ -3,7 +3,6 @@ var mysql   = require("mysql");
 var bodyParser  = require("body-parser");
 var userController= require("./controller/users.js");
 var authController= require("./controller/auth.js");
-var oauthController= require("./controller/oauth.js");
 var app  = express();
 var jwt = require("jsonwebtoken");
 var config = require("./config.js");
