@@ -87,6 +87,41 @@ NEW_ROUTER.prototype.handleRoutes= function(connection,auth) {
   });
 
 });
+
+  router.post("/adduser",function(req,res){
+
+  //  console.log(pass);
+  bcrypt.genSalt(5, function(err, salt) {
+    if (err) return err;
+
+    bcrypt.hash(req.body.password, salt, null, function(err, hash) {
+      if (err) return err;
+
+
+      var query = "INSERT INTO ??(email,password,credentials,updated_at,created_at,first_name, last_name) VALUES (?, ? ,?,NOW(),NOW(), ?,?)";
+      var table = ["users", req.body.email, hash, req.body.credentials, req.body.first_name, req.body.last_name];
+
+      query = mysql.format(query,table);
+      console.log(query);
+      connection.query(query, function(err,results){
+        if(err){
+          res.json({"Error": true,"Message" : err});
+        }else{
+
+          if (!isEmptyObject(results)) {
+
+            res.json({"Error": false, "Message" : "Sign Up Success"});
+          } else {
+            res.json({"Error": true, "Message" : "Failed! Retry again"}) 
+          }
+
+        }
+      }); 
+
+    });
+  });
+
+});
   //login user
   router.post("/login",function(req,res){
     var query = "SELECT * FROM ?? where email = ?";
@@ -105,7 +140,7 @@ NEW_ROUTER.prototype.handleRoutes= function(connection,auth) {
             else{
               if(isMatch)
               {
-                res.json({"Error": false}) 
+                res.json({"Error": false,"email": user[0]['email'], "name":user[0]['first_name'], "credentials": user[0]['credentials'], "id" : user[0]['id']}) 
               }else{
                 res.json({"Error": true})
               }
@@ -119,112 +154,166 @@ NEW_ROUTER.prototype.handleRoutes= function(connection,auth) {
     });
   });
 
-router.get("/registerWatchList/:user_id/:movie_id",function(req, res){
 
-  var datetime = new Date();
-  var date = datetime.getFullYear()+"-"+datetime.getMonth()+"-"+datetime.getDate();
-  console.log(date);
-  var query = "INSERT INTO ??(??,??,status,modifiedDate) VALUES (?,?,'watch list','"+ date +"')";
-  var table = ["watchlist","user_id","movie_id",req.params.user_id,req.params.movie_id];
-  query = mysql.format(query,table);
-  console.log(query);
-  connection.query(query,function(err,results){
-    if(err) {
-      res.json({"Error" : true, "Message" : err});
-    } else {
-      res.json({"Error" : false, "Message" : "watch list added"});
+  router.post("/addoauth",function(req,res){
+   var insert = findTrue('oauth', 'user_id', req.body.user_id, function(val){
+    console.log(val);
+    if(val)
+    {
+      var  query = "INSERT  INTO ??(type, user_name, user_id, user_email, credentials, created_at) VALUES (?,?,?,?,?, NOW())";
+      var table = ["oauth", req.body.type, req.body.user_name, req.body.user_id, req.body.user_email, req.body.credentials];
+      query = mysql.format(query,table);
+      console.log(query);
+      connection.query(query, function(err,results){
+        if(err){
+          res.json({"Error": true,"Message" : err});
+        }else{
+
+          if (!isEmptyObject(results)) {
+
+            res.json({"Error": false, "Message" : "Sign Up Success"});
+          } else {
+            res.json({"Error": true, "Message" : "Failed! Retry again"}) 
+          }
+
+        }
+      });
     }
+    else
+    {
+     res.json({"Error": false, "Message" : "Sign Up Success"});
+   }
+
+ });
+
+ });
+
+
+  var findTrue = function(table, attribute, value, callback)
+  {
+    var query = "SELECT * FROM ?? where "+attribute+" = ?";
+    var table = [table, value];
+    query = mysql.format(query,table);
+    console.log(query);
+    connection.query(query, function(err,user){
+      if(err){
+        callback(false);
+      }else{
+
+        if (!isEmptyObject(user)) {
+          callback(false);
+        } else {
+          callback(true); 
+        }
+      }
+    });
+  }
+  router.get("/registerWatchList/:user_id/:movie_id",function(req, res){
+
+    var datetime = new Date();
+    var date = datetime.getFullYear()+"-"+datetime.getMonth()+"-"+datetime.getDate();
+    console.log(date);
+    var query = "INSERT INTO ??(??,??,status,modifiedDate) VALUES (?,?,'watch list','"+ date +"')";
+    var table = ["watchlist","user_id","movie_id",req.params.user_id,req.params.movie_id];
+    query = mysql.format(query,table);
+    console.log(query);
+    connection.query(query,function(err,results){
+      if(err) {
+        res.json({"Error" : true, "Message" : err});
+      } else {
+        res.json({"Error" : false, "Message" : "watch list added"});
+      }
+    });
+  })
+
+  router.get("/findMemberWatch/:member_id",function(req,res){
+    var query ="SELECT  Mov.*, W.*"+
+    " FROM  watchlist W inner join member M inner JOIN movie Mov  ON W.user_id = M.user_id AND W.movie_id = Mov.movie_id"+
+    " WHERE M.user_id = ? AND W.status = 'watch list';";
+
+    var table = [req.params.member_id];
+    query = mysql.format(query,table);
+    console.log(query);
+    connection.query(query,function(err,rows){
+      if(err) {
+        res.json({"Error" : true, "Message" : "Error executing MySQL query"});
+      } else {
+        res.json(rows);
+      }
+    });
   });
-})
 
-router.get("/findMemberWatch/:member_id",function(req,res){
-  var query ="SELECT  Mov.*, W.*"+
-  " FROM  watchlist W inner join member M inner JOIN movie Mov  ON W.user_id = M.user_id AND W.movie_id = Mov.movie_id"+
-  " WHERE M.user_id = ? AND W.status = 'watch list';";
-
-  var table = [req.params.member_id];
-  query = mysql.format(query,table);
-  console.log(query);
-  connection.query(query,function(err,rows){
-    if(err) {
-      res.json({"Error" : true, "Message" : "Error executing MySQL query"});
-    } else {
-      res.json(rows);
-    }
+  router.get("/findAllMovie",function(req,res){
+    var query = "SELECT * FROM ?? ";
+    var table = ["movie"];
+    query = mysql.format(query,table);
+    console.log(query);
+    connection.query(query,function(err,rows){
+      if(err) {
+        res.json({"Error" : true, "Message" : "Error executing MySQL query"});
+      } else {
+        res.json(rows);
+      }
+    });
   });
-});
-
-router.get("/findAllMovie",function(req,res){
-  var query = "SELECT * FROM ?? ";
-  var table = ["movie"];
-  query = mysql.format(query,table);
-  console.log(query);
-  connection.query(query,function(err,rows){
-    if(err) {
-      res.json({"Error" : true, "Message" : "Error executing MySQL query"});
-    } else {
-      res.json(rows);
-    }
+  router.post("/findMoviebyTitle",function(req,res){
+    var query = "SELECT * FROM ?? WHERE title = ? ";
+    var table = ["movie",req.body.title];
+    query = mysql.format(query,table);
+    console.log(query);
+    connection.query(query,function(err,rows){
+      if(err) {
+        res.json({"Error" : true, "Message" : "Error executing MySQL query"});
+      } else {
+        res.json(rows);
+      }
+    });
   });
-});
-router.post("/findMoviebyTitle",function(req,res){
-  var query = "SELECT * FROM ?? WHERE title = ? ";
-  var table = ["movie",req.body.title];
-  query = mysql.format(query,table);
-  console.log(query);
-  connection.query(query,function(err,rows){
-    if(err) {
-      res.json({"Error" : true, "Message" : "Error executing MySQL query"});
-    } else {
-      res.json(rows);
-    }
+
+  router.post("/findMoviebyId",function(req,res){
+    var query = "SELECT * FROM ?? WHERE movie_id = ?" ;
+    var table = ["movie", req.body.id];
+    query = mysql.format(query,table);
+    console.log(query);
+    connection.query(query,function(err,rows){
+      if(err) {
+        res.json({"Error" : true, "Message" : "Error executing MySQL query"});
+      } else {
+        res.json(rows);
+      }
+    });
   });
-});
 
-router.post("/findMoviebyId",function(req,res){
-  var query = "SELECT * FROM ?? WHERE movie_id = ?" ;
-  var table = ["movie", req.body.id];
-  query = mysql.format(query,table);
-  console.log(query);
-  connection.query(query,function(err,rows){
-    if(err) {
-      res.json({"Error" : true, "Message" : "Error executing MySQL query"});
-    } else {
-      res.json(rows);
-    }
+  router.get("/memberList",function(req,res){
+    var query = "SELECT user_id, username FROM ?? " ;
+    var table = ["member"];
+    query = mysql.format(query,table);
+    console.log(query);
+    connection.query(query,function(err,rows){
+      if(err) {
+        res.json({"Error" : true, "Message" : "Error executing MySQL query"});
+      } else {
+        res.json(rows);
+      }
+    });
   });
-});
 
-router.get("/memberList",function(req,res){
-  var query = "SELECT user_id, username FROM ?? " ;
-  var table = ["member"];
-  query = mysql.format(query,table);
-  console.log(query);
-  connection.query(query,function(err,rows){
-    if(err) {
-      res.json({"Error" : true, "Message" : "Error executing MySQL query"});
-    } else {
-      res.json(rows);
-    }
+
+  router.get("/movieList",function(req,res){
+    var query = "SELECT movie_id, title FROM ?? " ;
+    var table = ["movie"];
+    query = mysql.format(query,table);
+    console.log(query);
+    connection.query(query,function(err,rows){
+      if(err) {
+        res.json({"Error" : true, "Message" : "Error executing MySQL query"});
+      } else {
+        res.json(rows);
+      }
+    });
   });
-});
 
-
-router.get("/movieList",function(req,res){
-  var query = "SELECT movie_id, title FROM ?? " ;
-  var table = ["movie"];
-  query = mysql.format(query,table);
-  console.log(query);
-  connection.query(query,function(err,rows){
-    if(err) {
-      res.json({"Error" : true, "Message" : "Error executing MySQL query"});
-    } else {
-      res.json(rows);
-    }
-  });
-});
-
-return router;
+  return router;
 }
 
 

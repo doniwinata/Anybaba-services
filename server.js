@@ -3,6 +3,7 @@ var mysql   = require("mysql");
 var bodyParser  = require("body-parser");
 var userController= require("./controller/users.js");
 var authController= require("./controller/auth.js");
+var oauthController= require("./controller/oauth.js");
 var app  = express();
 var jwt = require("jsonwebtoken");
 var config = require("./config.js");
@@ -16,10 +17,10 @@ REST.prototype.connectMysql = function() {
   var self = this;
   var pool      =    mysql.createPool({
     connectionLimit : 100,
-    host     : 'localhost',
-    user     : 'root',
-    password : '',
-    database : 'final_ws',
+    host     : 'sql6.freemysqlhosting.net',
+    user     : 'sql699488',
+    password : 'iPjbKfY2X9',
+    database : 'sql699488',
     debug    :  false
   });
   pool.getConnection(function(err,connection){
@@ -82,6 +83,7 @@ REST.prototype.configureExpress = function(connection) {
 });
   app.use('/*',router);
   app.use('/backend/users', new userController(connection,auth));
+ // app.use('/oauth', new oauthController(connection));
 
 
 
@@ -89,7 +91,7 @@ REST.prototype.configureExpress = function(connection) {
 }
 // setting local server on port 3000 
 REST.prototype.startServer = function() {
-  app.listen(3000,function(){
+  app.listen(process.env.PORT || 3000,function(){
     console.log("All right ! I am alive at Port 3000.");
   });
 }
