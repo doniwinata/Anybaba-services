@@ -208,23 +208,56 @@ NEW_ROUTER.prototype.handleRoutes= function(connection,auth) {
       }
     });
   }
-  router.get("/registerWatchList/:user_id/:movie_id",function(req, res){
 
-    var datetime = new Date();
-    var date = datetime.getFullYear()+"-"+datetime.getMonth()+"-"+datetime.getDate();
-    console.log(date);
-    var query = "INSERT INTO ??(??,??,status,modifiedDate) VALUES (?,?,'watch list','"+ date +"')";
-    var table = ["watchlist","user_id","movie_id",req.params.user_id,req.params.movie_id];
+  router.get("/members",function(req, res){
+
+    var query ="SELECT  * from ?? where ?? = ? and ?? != ?";
+
+    var table = ['users','credentials','member','status','deleted'];
     query = mysql.format(query,table);
     console.log(query);
-    connection.query(query,function(err,results){
+    connection.query(query,function(err,rows){
       if(err) {
-        res.json({"Error" : true, "Message" : err});
+        res.json({"Error" : true, "Message" : "Error executing MySQL query"});
       } else {
-        res.json({"Error" : false, "Message" : "watch list added"});
+        res.json(rows);
       }
     });
-  })
+  });
+
+  router.get("/members/find/:id",function(req, res){
+
+    var query ="SELECT  * from ?? where ?? = ? and ?? = ?";
+
+    var table = ['users','credentials','member','id',req.params.id];
+    query = mysql.format(query,table);
+    console.log(query);
+    connection.query(query,function(err,rows){
+      if(err) {
+        res.json({"Error" : true, "Message" : "Error executing MySQL query"});
+      } else {
+
+        res.json(rows);
+      }
+    });
+  });
+
+  router.get("/members/delete/:id",function(req, res){
+
+    var query ="UPDATE  ?? set ?? = ? where ?? = ?";
+
+    var table = ['users','status','deleted','id',req.params.id];
+    query = mysql.format(query,table);
+    console.log(query);
+    connection.query(query,function(err,rows){
+      if(err) {
+        res.json({"Error" : true, "Message" : "Error executing MySQL query"});
+      } else {
+
+        res.json({"Error" : false, "Message" : "Deleted"});
+      }
+    });
+  });
 
   router.get("/findMemberWatch/:member_id",function(req,res){
     var query ="SELECT  Mov.*, W.*"+
@@ -238,6 +271,7 @@ NEW_ROUTER.prototype.handleRoutes= function(connection,auth) {
       if(err) {
         res.json({"Error" : true, "Message" : "Error executing MySQL query"});
       } else {
+        console.log(rows);
         res.json(rows);
       }
     });

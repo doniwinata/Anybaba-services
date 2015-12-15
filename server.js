@@ -14,7 +14,7 @@ function REST(){
 //connection to MySQL database
 REST.prototype.connectMysql = function() {
   var self = this;
-  var pool      =    mysql.createPool({
+ /* var pool      =    mysql.createPool({
     connectionLimit : 100,
     host     : 'sql6.freemysqlhosting.net',
     user     : 'sql699488',
@@ -22,6 +22,16 @@ REST.prototype.connectMysql = function() {
     database : 'sql699488',
     debug    :  false
   });
+*/
+  var pool      =    mysql.createPool({
+    connectionLimit : 100,
+    host     : 'localhost',
+    user     : 'root',
+    password : '',
+    database : 'final_ws',
+    debug    :  false
+  });
+
   pool.getConnection(function(err,connection){
     if(err) {
       self.stop(err);
@@ -80,7 +90,7 @@ REST.prototype.configureExpress = function(connection) {
     
   }
 });
-  app.use('/*',router);
+ // app.use('/*',router);
   app.use('/backend/users', new userController(connection,auth));
  // app.use('/oauth', new oauthController(connection));
 
