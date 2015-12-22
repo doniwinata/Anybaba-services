@@ -3,6 +3,9 @@ var mysql   = require("mysql");
 var bodyParser  = require("body-parser");
 var userController= require("./controller/users.js");
 var authController= require("./controller/auth.js");
+var productController = require('./controller/products.js');
+var cartController = require('./controller/carts.js');
+var orderController = require('./controller/orders.js');
 var app  = express();
 var jwt = require("jsonwebtoken");
 var config = require("./config.js");
@@ -92,6 +95,9 @@ REST.prototype.configureExpress = function(connection) {
 });
  // app.use('/*',router);
   app.use('/backend/users', new userController(connection,auth));
+   app.use('/backend/products', new productController(connection,auth));
+   app.use('/backend/carts', new cartController(connection,auth));
+    app.use('/backend/orders', new orderController(connection,auth));
  // app.use('/oauth', new oauthController(connection));
 
 
