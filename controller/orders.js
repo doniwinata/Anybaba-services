@@ -75,8 +75,8 @@ NEW_ROUTER.prototype.handleRoutes= function(connection,auth) {
                   res.json({"Error": true,"Message" : err});
                 }else{
                   res.json({"Message" : 'Order Success!'});
-               };
-             });
+                };
+              });
             }
 
           });
@@ -105,6 +105,24 @@ router.get("/histories/:user_id",function(req, res){
   });
 });
 
+router.get("/manage/:type",function(req, res){
+ // console.log('wew');
+ var query = "SELECT  o.code as code, o.status as status, o.created_at as created_at,sum(p.price) as total "+
+ " FROM  orders o inner join order_product op inner join products p ON o.code = op.code and op.products_id = p.id"+
+ " WHERE o.status = ? group by(o.code);";
+ var table = [req.params.type];
+ query = mysql.format(query,table);
+ console.log(query);
+ connection.query(query,function(err,rows){
+  if(err) {
+    res.json({"Error" : true, "Message" : "Error executing MySQL query"});
+  } else {
+
+    res.json(rows);
+  }
+});
+});
+
 router.post("/delete",function(req,res){
   var query = "DELETE FROM ?? WHERE id = ?";
   var table = ['carts', req.body.id];
@@ -119,12 +137,43 @@ router.post("/delete",function(req,res){
     }
   }); 
 
-
-
-
-
 });
 
+router.get("/detail/:orderCode",function(req,res){
+  console.log(req.params.orderCode);
+  var query = "SELECT  o.code as code, o.status as status, o.created_at as created_at, sum(p.price) as total,p.*,u.email "+
+  " FROM  orders o inner join order_product op inner join users u inner join products p ON o.code = op.code and u.id = o.user_id and op.products_id = p.id"+
+  " WHERE o.code = ? group by p.id;";
+  var table = [req.params.orderCode];
+
+  query = mysql.format(query,table);
+  console.log(query);
+  connection.query(query, function(err,results){
+   if(err) {
+    res.json({"Error" : true, "Message" : "Error executing MySQL query"});
+  } else {
+    
+    res.json(results);
+  }
+  }); 
+}); 
+
+router.get("/status/:type/:orderCode",function(req,res){
+  console.log(req.params.orderCode);
+  var query = "UPDATE  ?? SET ?? = ? where code = ? ";
+  var table = ['orders', 'status',req.params.type,req.params.orderCode];
+
+  query = mysql.format(query,table);
+  console.log(query);
+  connection.query(query, function(err,results){
+   if(err) {
+    res.json({"Error" : true, "Message" : "Error executing MySQL query"});
+  } else {
+    
+   res.json({ "Message" : "Order paid !"});
+  }
+  }); 
+}); 
 
 
 

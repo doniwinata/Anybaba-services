@@ -2,6 +2,8 @@ var mysql = require("mysql");
 var express = require('express');
 var router = express.Router();
 var bcrypt = require('bcrypt-nodejs');
+var jwt = require('jsonwebtoken');
+var config = require("../config.js");
 function NEW_ROUTER(connection,auth) {
   var self = this;
   return self.handleRoutes(connection,auth);
@@ -56,61 +58,70 @@ NEW_ROUTER.prototype.handleRoutes= function(connection,auth) {
   router.post("/addmember",function(req,res){
 
   //  console.log(pass);
-  bcrypt.genSalt(5, function(err, salt) {
-    if (err) return err;
 
-    bcrypt.hash(req.body.password, salt, null, function(err, hash) {
-      if (err) return err;
+  console.log( 'Data Sent: ' + req.body.data);
+  jwt.verify(req.body.data, config.secret, function(err, decoded) {      
+    if (err) {
 
-      var insert = find('users', 'email', req.body.email, function(val){
-        console.log(val);
-        if(!val){
-         var query = "INSERT INTO ??(email,password,credentials,updated_at,created_at,first_name, last_name) VALUES (?, ? ,?,NOW(),NOW(), ?,?)";
-         var table = ["users", req.body.email, hash, 'member', req.body.first_name, req.body.last_name];
+      return res.json({ success: false, message: 'Failed to authenticate token.' });    
+    } else {
+      bcrypt.genSalt(5, function(err, salt) {
+        if (err) return err;
 
-         query = mysql.format(query,table);
-         console.log(query);
-         connection.query(query, function(err,results){
-          if(err){
-            res.json({"Error": true,"Message" : err});
-          }else{
+        bcrypt.hash(decoded.password, salt, null, function(err, hash) {
+          if (err) return err;
 
-            if (!isEmptyObject(results)) {
+          var insert = find('users', 'email', req.body.email, function(val){
 
-              res.json({"Error": false, "Message" : "Sign Up Success"});
-            } else {
-              res.json({"Error": true, "Message" : "Failed! Retry again"}) 
-            }
+            if(!val){
+             var query = "INSERT INTO ??(email,password,credentials,updated_at,created_at,first_name, last_name) VALUES (?, ? ,?,NOW(),NOW(), ?,?)";
+             var table = ["users", decoded.email, hash, 'member', decoded.first_name, decoded.last_name];
 
-          }
-        }); 
+             query = mysql.format(query,table);
+             console.log(query);
+             connection.query(query, function(err,results){
+              if(err){
+                res.json({"Error": true,"Message" : err});
+              }else{
 
-       }
-       else{
-         var query = "UPDATE ?? SET ?? =?, ?? = ?   where ?? = ?  ";
-         var table = ["users",'password',hash,'type','1','email', req.body.email];
+                if (!isEmptyObject(results)) {
 
-         query = mysql.format(query,table);
-         console.log(query);
-         connection.query(query, function(err,results){
-          if(err){
-            res.json({"Error": true,"Message" : err});
-          }else{
+                  res.json({"Error": false, "Message" : "Sign Up Success"});
+                } else {
+                  res.json({"Error": true, "Message" : "Failed! Retry again"}) 
+                }
 
-            if (!isEmptyObject(results)) {
+              }
+            }); 
 
-              res.json({"Error": false, "Message" : "Sign Up Success"});
-            } else {
-              res.json({"Error": true, "Message" : "Failed! Retry again"}) 
-            }
+           }
+           else{
+             var query = "UPDATE ?? SET ?? =?, ?? = ?   where ?? = ?  ";
+             var table = ["users",'password',hash,'type','1','email', req.body.email];
 
-          }
-        });
-       }
-     });
+             query = mysql.format(query,table);
+             console.log(query);
+             connection.query(query, function(err,results){
+              if(err){
+                res.json({"Error": true,"Message" : err});
+              }else{
+
+                if (!isEmptyObject(results)) {
+
+                  res.json({"Error": false, "Message" : "Sign Up Success"});
+                } else {
+                  res.json({"Error": true, "Message" : "Failed! Retry again"}) 
+                }
+
+              }
+            });
+           }
+         });
 
 
 });
+});
+}
 });
 
 });
@@ -151,23 +162,32 @@ router.post("/adduser",function(req,res){
 });
   //login user
   router.post("/login",function(req,res){
-    var query = "SELECT * FROM ?? where email = ?";
-    var table = ["users", req.body.email];
-    query = mysql.format(query,table);
-    console.log(query);
-    connection.query(query, function(err,user){
-      if(err){
-        res.json({"Error": true});
-      }else{
+    console.log('data sent : ' + req.body.data);
+   jwt.verify(req.body.data, config.secret, function(err, decoded) {      
+    if (err) {
 
-        if (!isEmptyObject(user)) {
+      return res.json({ success: false, message: 'Failed to authenticate token.' });    
+    } else {
+      var query = "SELECT * FROM ?? where email = ?";
+      var table = ["users", decoded.email];
+      query = mysql.format(query,table);
+     
+      connection.query(query, function(err,user){
+        if(err){
+          res.json({"Error": true});
+        }else{
+
+          if (!isEmptyObject(user)) {
           //if email user found
-          bcrypt.compare(req.body.password, user[0]['password'], function(err, isMatch) {
+          bcrypt.compare(decoded.password, user[0]['password'], function(err, isMatch) {
             if (err) {return err;}
             else{
               if(isMatch)
               {
-                res.json({"Error": false,"email": user[0]['email'], "name":user[0]['first_name'], "credentials": user[0]['credentials'], "id" : user[0]['id']}) 
+                var object = {"Error": false,"email": user[0]['email'], "name":user[0]['first_name'], "credentials": user[0]['credentials'], "id" : user[0]['id']}
+                var data = jwt.sign(object,config.secret);
+                console.log('data response: ' + data);
+                res.json(data); 
               }else{
                 res.json({"Error": true})
               }
@@ -179,24 +199,27 @@ router.post("/adduser",function(req,res){
         }
       }
     });
+    }
   });
 
+});
 
-  router.post("/addoauth",function(req,res){
-   var insert = find('oauth', 'user_id', req.body.user_id, function(val){
-    console.log(val);
-    if(!val)
-    {
-      var  query = "INSERT  INTO ??(type, user_name, user_id, user_email, credentials, created_at) VALUES (?,?,?,?,?, NOW())";
-      var table = ["oauth", req.body.type, req.body.user_name, req.body.user_id, req.body.user_email, req.body.credentials];
-      query = mysql.format(query,table);
-      console.log(query);
-      connection.query(query, function(err,results){
-        if(err){
-          res.json({"Error": true,"Message" : err});
-        }else{
 
-          if (!isEmptyObject(results)) {
+router.post("/addoauth",function(req,res){
+ var insert = find('oauth', 'user_id', req.body.user_id, function(val){
+  console.log(val);
+  if(!val)
+  {
+    var  query = "INSERT  INTO ??(type, user_name, user_id, user_email, credentials, created_at) VALUES (?,?,?,?,?, NOW())";
+    var table = ["oauth", req.body.type, req.body.user_name, req.body.user_id, req.body.user_email, req.body.credentials];
+    query = mysql.format(query,table);
+    console.log(query);
+    connection.query(query, function(err,results){
+      if(err){
+        res.json({"Error": true,"Message" : err});
+      }else{
+
+        if (!isEmptyObject(results)) {
 
             //res.json({"Error": false, "Message" : "Sign Up Success"});
 

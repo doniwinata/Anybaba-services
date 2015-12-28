@@ -68,8 +68,14 @@ REST.prototype.configureExpress = function(connection) {
       } else {
 
        //check if it is our client
+       +new Date;
+       var now =Math.round(Date.now()/1000); 
+       var min = now-5;
+       var max = now + 5;
+       console.log(decoded.timestamp);
+       console.log(now);
        
-       if(decoded.client_id == config.client_id && decoded.client_secret == config.client_secret)
+       if(decoded.client_id == config.client_id  && decoded.timestamp >= min && decoded.timestamp <= max)
        {
          next();
        }
@@ -93,7 +99,7 @@ REST.prototype.configureExpress = function(connection) {
     
   }
 });
- // app.use('/*',router);
+  app.use('/*',router);
   app.use('/backend/users', new userController(connection,auth));
    app.use('/backend/products', new productController(connection,auth));
    app.use('/backend/carts', new cartController(connection,auth));
