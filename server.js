@@ -9,7 +9,8 @@ var orderController = require('./controller/orders.js');
 var app  = express();
 var jwt = require("jsonwebtoken");
 var config = require("./config.js");
-
+var validator  = require('express-validator');
+var helmet  = require('helmet');
 function REST(){
   var self = this;
   self.connectMysql();
@@ -26,22 +27,22 @@ REST.prototype.connectMysql = function() {
     debug    :  false
   });
 */
-  var pool      =    mysql.createPool({
-    connectionLimit : 100,
-    host     : 'localhost',
-    user     : 'root',
-    password : '',
-    database : 'final_ws',
-    debug    :  false
-  });
+var pool      =    mysql.createPool({
+  connectionLimit : 100,
+  host     : 'localhost',
+  user     : 'root',
+  password : '',
+  database : 'final_ws',
+  debug    :  false
+});
 
-  pool.getConnection(function(err,connection){
-    if(err) {
-      self.stop(err);
-    } else {
-      self.configureExpress(connection);
-    }
-  });
+pool.getConnection(function(err,connection){
+  if(err) {
+    self.stop(err);
+  } else {
+    self.configureExpress(connection);
+  }
+});
 }
 //router to services.js
 REST.prototype.configureExpress = function(connection) {
@@ -99,16 +100,47 @@ REST.prototype.configureExpress = function(connection) {
     
   }
 });
-  app.use('/*',router);
-  app.use('/backend/users', new userController(connection,auth));
-   app.use('/backend/products', new productController(connection,auth));
-   app.use('/backend/carts', new cartController(connection,auth));
-    app.use('/backend/orders', new orderController(connection,auth));
+
+app.use(validator());
+//sanitize 
+app.use(function(req, res, next) {
+  for (var item in req.body) {
+    req.sanitize(item).escape();
+  }
+  //console.log(item);
+  next();
+});
+//deny iframe
+app.use(helmet.xframe());
+
+// hide express information
+app.use(helmet.hidePoweredBy());
+
+app.use(helmet.xssFilter());
+//define allowed 
+app.use(helmet.csp({
+  defaultSrc: ["'self'"],
+  scriptSrc: ["'self'", "'unsafe-inline'"],
+  styleSrc: ["'self'"],
+  imgSrc: ['self'],
+  connectSrc: ["'none'"],
+  fontSrc: [],
+  objectSrc: [],
+  mediaSrc: [],
+  frameSrc: []
+}));
+
+
+app.use('/*',router);
+app.use('/backend/users', new userController(connection,auth));
+app.use('/backend/products', new productController(connection,auth));
+app.use('/backend/carts', new cartController(connection,auth));
+app.use('/backend/orders', new orderController(connection,auth));
  // app.use('/oauth', new oauthController(connection));
 
 
 
-  self.startServer();
+ self.startServer();
 }
 // setting local server on port 3000 
 REST.prototype.startServer = function() {
