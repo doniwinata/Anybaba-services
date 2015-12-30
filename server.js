@@ -11,6 +11,13 @@ var jwt = require("jsonwebtoken");
 var config = require("./config.js");
 var validator  = require('express-validator');
 var helmet  = require('helmet');
+var fs = require('fs');
+var https = require('https');
+var options = {
+ key  : fs.readFileSync('server.key'),
+ cert : fs.readFileSync('server.crt')
+};
+
 function REST(){
   var self = this;
   self.connectMysql();
@@ -144,9 +151,12 @@ app.use('/backend/orders', new orderController(connection,auth));
 }
 // setting local server on port 3000 
 REST.prototype.startServer = function() {
-  app.listen(process.env.PORT || 3000,function(){
+  https.createServer(options, app).listen(3000, function () {
+    console.log('All right ! I am alive at Port 3000.');
+ });
+  /*app.listen(process.env.PORT || 3000,function(){
     console.log("All right ! I am alive at Port 3000.");
-  });
+  });*/
 }
 
 REST.prototype.stop = function(err) {
